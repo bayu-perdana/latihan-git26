@@ -2,3 +2,4 @@ Nama Saya : Mohammad Bayu Perdana
 1. Sekarang create directori
 2. commit pertama
 3. push pertama
+4. commit kedua
