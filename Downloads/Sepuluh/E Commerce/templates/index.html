@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Penjualan & Inventaris Retail - MySQL Connected</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-full flex flex-col md:flex-row overflow-hidden bg-slate-100 text-slate-800">
+
+<!-- LOGIN CONTAINER -->
+<div id="login-container" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 px-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 space-y-6">
+        <div class="text-center space-y-2">
+            <div class="w-14 h-14 rounded-xl bg-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-blue-500/30 mx-auto">
+                <i class="fa-solid fa-database"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900">MBRetail Login</h1>
+            <p class="text-xs text-slate-500">Hubungkan sistem dengan database MySQL</p>
+        </div>
+
+        <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
+                <input type="text" id="login-username" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="admin">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Password</label>
+                <input type="password" id="login-password" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="••••••••">
+            </div>
+            <div id="login-error" class="hidden text-xs text-red-600 font-medium text-center bg-red-50 p-2 rounded-lg">
+                Username atau password salah!
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg">
+                <i class="fa-solid fa-right-to-bracket me-2"></i> Masuk Sistem
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- MAIN APP CONTAINER -->
+<div id="app-container" class="hidden h-full w-full flex flex-col md:flex-row overflow-hidden">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-200 w-64 bg-slate-900 text-slate-300 flex flex-col z-40 shadow-xl">
+        <div class="p-5 border-b border-slate-800 hidden md:flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
+                <i class="fa-solid fa-database"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-white leading-tight">MBRetail</h1>
+                <p class="text-xs text-slate-400">MySQL Connected</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
+                <i class="fa-solid fa-chart-line w-5 text-center"></i><span>Dashboard Overview</span>
+            </button>
+            <button onclick="switchTab('pelanggan')" id="nav-pelanggan" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white">
+                <i class="fa-solid fa-users w-5 text-center"></i><span>Pelanggan (CRUD)</span>
+            </button>
+            <button onclick="switchTab('produk')" id="nav-produk" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white">
+                <i class="fa-solid fa-boxes-stacked w-5 text-center"></i><span>Kelola Barang & Stok</span>
+            </button>
+            <button onclick="switchTab('pos')" id="nav-pos" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white">
+                <i class="fa-solid fa-cart-shopping w-5 text-center text-emerald-400"></i><span>Tambah Transaksi (POS)</span>
+            </button>
+            <button onclick="switchTab('pesanan')" id="nav-pesanan" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white">
+                <i class="fa-solid fa-receipt w-5 text-center"></i><span>Pesanan</span>
+            </button>
+            <button onclick="switchTab('detail_pesanan')" id="nav-detail_pesanan" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 hover:text-white">
+                <i class="fa-solid fa-list-check w-5 text-center"></i><span>Detail Pesanan</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 bg-slate-950/50 space-y-3">
+            <button onclick="handleLogout()" class="w-full bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white py-2 rounded-lg text-xs font-semibold transition">
+                <i class="fa-solid fa-right-from-bracket me-2"></i>Keluar (Logout)
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar bg-slate-50">
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-30 shadow-sm">
+            <div>
+                <h2 id="page-title" class="text-xl font-bold text-slate-900">Dashboard Analytics</h2>
+                <p id="page-subtitle" class="text-xs text-slate-500">Terhubung ke database MySQL retail_db</p>
+            </div>
+            <button onclick="loadDatabaseData()" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition" title="Refresh Data">
+                <i class="fa-solid fa-rotate"></i>
+            </button>
+        </header>
+
+        <div class="p-6 max-w-7xl mx-auto w-full space-y-6">
+
+            <!-- DASHBOARD TAB -->
+            <div id="tab-dashboard" class="tab-content space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs font-medium text-slate-500 uppercase">Total Pendapatan</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="stat-omset">Rp 0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs font-medium text-slate-500 uppercase">Total Pelanggan</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="stat-count-pelanggan">0 Orang</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs font-medium text-slate-500 uppercase">Katalog Produk</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="stat-count-produk">0 Item</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs font-medium text-slate-500 uppercase">Total Transaksi</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="stat-count-transaksi">0 Pesanan</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PELANGGAN TAB -->
+            <div id="tab-pelanggan" class="tab-content space-y-6 hidden">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-4" id="form-pelanggan-title">Tambah Pelanggan Baru</h3>
+                    <form id="form-pelanggan" onsubmit="savePelanggan(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <input type="hidden" id="edit-id-pelanggan">
+                        <input type="text" id="inp-nama-pelanggan" required placeholder="Nama Pelanggan" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <input type="email" id="inp-email-pelanggan" required placeholder="Email" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <input type="text" id="inp-telp-pelanggan" required placeholder="Telepon" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <input type="text" id="inp-kota-pelanggan" required placeholder="Kota" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm">Simpan</button>
+                    </form>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-700">
+                        <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b">
+                            <tr>
+                                <th class="px-6 py-3">ID</th><th class="px-6 py-3">Nama</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Telepon</th><th class="px-6 py-3">Kota</th><th class="px-6 py-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-pelanggan" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PRODUK TAB -->
+            <div id="tab-produk" class="tab-content space-y-6 hidden">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-4" id="form-produk-title">Tambah Produk Baru</h3>
+                    <form id="form-produk" onsubmit="saveProduk(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <input type="hidden" id="edit-id-produk">
+                        <input type="text" id="inp-nama-produk" required placeholder="Nama Produk" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <input type="text" id="inp-kategori-produk" required placeholder="Kategori" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <input type="number" id="inp-harga-produk" required placeholder="Harga" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <input type="number" id="inp-stok-produk" required placeholder="Stok" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm">Simpan</button>
+                    </form>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-700">
+                        <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b">
+                            <tr>
+                                <th class="px-6 py-3">ID</th><th class="px-6 py-3">Nama Produk</th><th class="px-6 py-3">Kategori</th><th class="px-6 py-3 text-right">Harga</th><th class="px-6 py-3 text-center">Stok</th><th class="px-6 py-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-produk" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- POS TRANSAKSI TAB -->
+            <div id="tab-pos" class="tab-content space-y-6 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 class="font-bold text-slate-800 text-base">Buat Transaksi POS</h3>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Pilih Pelanggan</label>
+                            <select id="pos-pelanggan" class="w-full p-2.5 border rounded-lg text-sm"></select>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end bg-slate-50 p-4 rounded-xl border">
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Pilih Produk</label>
+                                <select id="pos-produk-select" class="w-full p-2.5 border rounded-lg text-sm bg-white"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Jumlah</label>
+                                <div class="flex space-x-2">
+                                    <input type="number" id="pos-qty" min="1" value="1" class="w-full p-2.5 border rounded-lg text-center font-bold">
+                                    <button type="button" onclick="addToCart()" class="bg-emerald-600 text-white px-4 py-2.5 rounded-lg"><i class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto border rounded-xl">
+                            <table class="w-full text-left text-sm text-slate-700">
+                                <thead class="bg-slate-50 text-xs uppercase font-semibold border-b">
+                                    <tr><th class="px-4 py-2">Produk</th><th class="px-4 py-2 text-right">Harga</th><th class="px-4 py-2 text-center">Qty</th><th class="px-4 py-2 text-right">Subtotal</th><th class="px-4 py-2 text-center">Aksi</th></tr>
+                                </thead>
+                                <tbody id="cart-tbody" class="divide-y font-mono text-xs">
+                                    <tr><td colspan="5" class="text-center py-4 text-slate-400 font-sans">Keranjang kosong</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-slate-800 pb-3 border-b">Total Tagihan</h3>
+                            <div class="text-2xl font-bold font-mono text-emerald-900" id="cart-grand-total">Rp 0</div>
+                        </div>
+                        <button onclick="checkoutTransaction()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition">
+                            <i class="fa-solid fa-cash-register me-2"></i> Proses Checkout
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESANAN TAB -->
+            <div id="tab-pesanan" class="tab-content space-y-4 hidden">
+                <div class="bg-white p-5 rounded-xl border shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-700">
+                        <thead class="bg-slate-50 text-xs uppercase font-semibold border-b">
+                            <tr><th class="px-6 py-3">ID Pesanan</th><th class="px-6 py-3">ID Pelanggan</th><th class="px-6 py-3">Tanggal</th><th class="px-6 py-3 text-right">Total Harga</th></tr>
+                        </thead>
+                        <tbody id="tbody-pesanan" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- DETAIL PESANAN TAB -->
+            <div id="tab-detail_pesanan" class="tab-content space-y-4 hidden">
+                <div class="bg-white p-5 rounded-xl border shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-700">
+                        <thead class="bg-slate-50 text-xs uppercase font-semibold border-b">
+                            <tr><th class="px-6 py-3">ID Detail</th><th class="px-6 py-3">ID Pesanan</th><th class="px-6 py-3">ID Produk</th><th class="px-6 py-3 text-center">Jumlah</th><th class="px-6 py-3 text-right">Subtotal</th></tr>
+                        </thead>
+                        <tbody id="tbody-detail_pesanan" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    let dbData = { pelanggan: [], produk: [], pesanan: [], detail_pesanan: [] };
+    let currentCart = [];
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+
+        const res = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            loadDatabaseData();
+        } else {
+            document.getElementById('login-error').classList.remove('hidden');
+        }
+    }
+
+    async function handleLogout() {
+        await fetch('/logout');
+        location.reload();
+    }
+
+    async function loadDatabaseData() {
+        const res = await fetch('/api/data');
+        dbData = await res.json();
+        renderTables();
+    }
+
+    function formatIDR(val) {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+    }
+
+    function renderTables() {
+        // Pelanggan
+        document.getElementById('tbody-pelanggan').innerHTML = dbData.pelanggan.map(row => `
+            <tr>
+                <td class="px-6 py-3">#${row.id_pelanggan}</td>
+                <td class="px-6 py-3 font-medium">${row.nama_pelanggan}</td>
+                <td class="px-6 py-3">${row.email}</td>
+                <td class="px-6 py-3">${row.telepon}</td>
+                <td class="px-6 py-3">${row.kota}</td>
+                <td class="px-6 py-3 text-center">
+                    <button onclick="deletePelanggan(${row.id_pelanggan})" class="text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+
+        // Produk
+        document.getElementById('tbody-produk').innerHTML = dbData.produk.map(row => `
+            <tr>
+                <td class="px-6 py-3">#${row.id_produk}</td>
+                <td class="px-6 py-3 font-medium">${row.nama_produk}</td>
+                <td class="px-6 py-3">${row.kategori}</td>
+                <td class="px-6 py-3 text-right font-mono">${formatIDR(row.harga)}</td>
+                <td class="px-6 py-3 text-center font-bold">${row.stok}</td>
+                <td class="px-6 py-3 text-center">
+                    <button onclick="deleteProduk(${row.id_produk})" class="text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+
+        // Pesanan
+        document.getElementById('tbody-pesanan').innerHTML = dbData.pesanan.map(row => `
+            <tr>
+                <td class="px-6 py-3 font-mono">#${row.id_pesanan}</td>
+                <td class="px-6 py-3">#${row.id_pelanggan}</td>
+                <td class="px-6 py-3">${row.tanggal_pesan}</td>
+                <td class="px-6 py-3 text-right font-mono font-bold">${formatIDR(row.total_harga)}</td>
+            </tr>
+        `).join('');
+
+        // Detail Pesanan
+        document.getElementById('tbody-detail_pesanan').innerHTML = dbData.detail_pesanan.map(row => `
+            <tr>
+                <td class="px-6 py-3 font-mono">#${row.id_detail}</td>
+                <td class="px-6 py-3 font-mono">#${row.id_pesanan}</td>
+                <td class="px-6 py-3 font-mono">#${row.id_produk}</td>
+                <td class="px-6 py-3 text-center">${row.jumlah}</td>
+                <td class="px-6 py-3 text-right font-mono">${formatIDR(row.subtotal)}</td>
+            </tr>
+        `).join('');
+
+        // Dashboard Stats
+        const totalOmset = dbData.pesanan.reduce((acc, curr) => acc + curr.total_harga, 0);
+        document.getElementById('stat-omset').innerText = formatIDR(totalOmset);
+        document.getElementById('stat-count-pelanggan').innerText = dbData.pelanggan.length + ' Orang';
+        document.getElementById('stat-count-produk').innerText = dbData.produk.length + ' Item';
+        document.getElementById('stat-count-transaksi').innerText = dbData.pesanan.length + ' Pesanan';
+
+        populatePOSDropdowns();
+    }
+
+    async function savePelanggan(e) {
+        e.preventDefault();
+        const data = {
+            nama_pelanggan: document.getElementById('inp-nama-pelanggan').value,
+            email: document.getElementById('inp-email-pelanggan').value,
+            telepon: document.getElementById('inp-telp-pelanggan').value,
+            kota: document.getElementById('inp-kota-pelanggan').value
+        };
+        await fetch('/api/pelanggan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        document.getElementById('form-pelanggan').reset();
+        loadDatabaseData();
+    }
+
+    async function deletePelanggan(id) {
+        if (confirm("Hapus pelanggan ini?")) {
+            await fetch(`/api/pelanggan/${id}`, { method: 'DELETE' });
+            loadDatabaseData();
+        }
+    }
+
+    async function saveProduk(e) {
+        e.preventDefault();
+        const data = {
+            nama_produk: document.getElementById('inp-nama-produk').value,
+            kategori: document.getElementById('inp-kategori-produk').value,
+            harga: parseFloat(document.getElementById('inp-harga-produk').value),
+            stok: parseInt(document.getElementById('inp-stok-produk').value)
+        };
+        await fetch('/api/produk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        document.getElementById('form-produk').reset();
+        loadDatabaseData();
+    }
+
+    async function deleteProduk(id) {
+        if (confirm("Hapus produk ini?")) {
+            await fetch(`/api/produk/${id}`, { method: 'DELETE' });
+            loadDatabaseData();
+        }
+    }
+
+    function populatePOSDropdowns() {
+        const selPelanggan = document.getElementById('pos-pelanggan');
+        selPelanggan.innerHTML = dbData.pelanggan.map(p => `<option value="${p.id_pelanggan}">${p.nama_pelanggan} (${p.kota})</option>`).join('');
+
+        const selProduk = document.getElementById('pos-produk-select');
+        selProduk.innerHTML = dbData.produk.map(p => `<option value="${p.id_produk}">${p.nama_produk} - ${formatIDR(p.harga)} (Stok: ${p.stok})</option>`).join('');
+    }
+
+    function addToCart() {
+        const prodId = parseInt(document.getElementById('pos-produk-select').value);
+        const qty = parseInt(document.getElementById('pos-qty').value);
+        const product = dbData.produk.find(p => p.id_produk == prodId);
+        if (!product) return;
+
+        if (qty > product.stok) {
+            alert(`Stok tidak mencukupi! Sisa stok: ${product.stok}`);
+            return;
+        }
+
+        const existing = currentCart.find(item => item.id_produk == prodId);
+        if (existing) {
+            existing.jumlah += qty;
+            existing.subtotal = existing.jumlah * product.harga;
+        } else {
+            currentCart.push({
+                id_produk: product.id_produk,
+                nama_produk: product.nama_produk,
+                harga: product.harga,
+                jumlah: qty,
+                subtotal: product.harga * qty
+            });
+        }
+        renderCart();
+    }
+
+    function renderCart() {
+        const tbody = document.getElementById('cart-tbody');
+        if (currentCart.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400 font-sans">Keranjang kosong</td></tr>`;
+            document.getElementById('cart-grand-total').innerText = formatIDR(0);
+            return;
+        }
+        tbody.innerHTML = currentCart.map((item, idx) => `
+            <tr>
+                <td class="px-4 py-2">${item.nama_produk}</td>
+                <td class="px-4 py-2 text-right">${formatIDR(item.harga)}</td>
+                <td class="px-4 py-2 text-center font-bold">${item.jumlah}</td>
+                <td class="px-4 py-2 text-right">${formatIDR(item.subtotal)}</td>
+                <td class="px-4 py-2 text-center"><button onclick="currentCart.splice(${idx},1);renderCart()" class="text-red-600"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>
+        `).join('');
+        const grandTotal = currentCart.reduce((acc, curr) => acc + curr.subtotal, 0);
+        document.getElementById('cart-grand-total').innerText = formatIDR(grandTotal);
+    }
+
+    async function checkoutTransaction() {
+        if (currentCart.length === 0) {
+            alert("Keranjang kosong!");
+            return;
+        }
+        const id_pelanggan = parseInt(document.getElementById('pos-pelanggan').value);
+        const res = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_pelanggan, cart: currentCart })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(`Checkout Berhasil! ID Pesanan: #${result.id_pesanan}`);
+            currentCart = [];
+            renderCart();
+            loadDatabaseData();
+            switchTab('pesanan');
+        } else {
+            alert("Gagal Checkout: " + result.message);
+        }
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
